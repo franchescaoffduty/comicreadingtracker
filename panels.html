@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panels — Graphic Novel Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --chocolate: #604734;
+    --chocolate-light: #7a5c45;
+    --chocolate-faint: #e8ddd7;
+    --cream: #fcf7d9;
+    --cream-dark: #f5efc4;
+    --blush: #f6d8d6;
+    --blush-dark: #ebbfbc;
+    --pink: #f0c5d4;
+    --pink-dark: #e0a8bc;
+    --ink: #3a2518;
+    --muted: #9a7b6e;
+    --faint: #c9b5ad;
+    --border: #e8d8d0;
+    --serif: 'Playfair Display', Georgia, serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; animation: fadeUp 0.4s ease both; }
+  .screen.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .container { max-width: 460px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2rem 0 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.75rem;
+  }
+  .brand {
+    font-family: var(--serif); font-size: 15px; color: var(--chocolate);
+    letter-spacing: 0.02em; font-style: italic;
+  }
+  .topbar-action {
+    background: var(--pink); border: none; font-family: var(--sans);
+    font-size: 12px; color: var(--chocolate); cursor: pointer; letter-spacing: 0.04em;
+    padding: 7px 14px; border-radius: 100px; transition: background 0.15s; font-weight: 500;
+  }
+  .topbar-action:hover { background: var(--pink-dark); }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    width: 100%; background: var(--chocolate); color: var(--cream);
+    border: none; border-radius: 8px; padding: 14px 0;
+    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.03em;
+  }
+  .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+  .btn-primary:disabled { background: var(--chocolate-faint); color: var(--faint); cursor: not-allowed; }
+
+  .btn-pink {
+    width: 100%; background: var(--pink); color: var(--chocolate);
+    border: none; border-radius: 8px; padding: 13px 0;
+    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .btn-pink:hover { background: var(--pink-dark); }
+
+  .btn-ghost {
+    width: 100%; background: none; border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 0; font-family: var(--sans);
+    font-size: 13px; color: var(--muted); cursor: pointer; transition: border-color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--faint); color: var(--ink); }
+
+  /* ── INPUTS ── */
+  .field { margin-bottom: 22px; }
+  .field label {
+    display: block; font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+  }
+  .field input, .field select {
+    width: 100%; background: var(--blush); border: 1px solid var(--blush-dark);
+    border-radius: 8px; padding: 11px 13px; font-size: 15px; color: var(--ink);
+    outline: none; font-family: var(--sans); transition: border-color 0.2s;
+    appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--pink-dark); }
+  .field input::placeholder { color: var(--faint); }
+  .field .hint { font-size: 12px; color: var(--faint); margin-top: 5px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── SHELF ── */
+  .shelf-header { margin-bottom: 1.5rem; }
+  .shelf-header h1 { font-family: var(--serif); font-size: 26px; font-weight: 400; color: var(--ink); }
+  .shelf-header p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .section-label { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; margin-top: 1.5rem; }
+
+  /* ── BOOK CARDS ── */
+  .shelf-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem; }
+  .book-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem 1.1rem; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .book-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 5px; background: var(--pink); border-radius: 10px 0 0 10px;
+    transition: background 0.2s;
+  }
+  .book-card.behind::before { background: var(--blush-dark); }
+  .book-card.done::before { background: var(--chocolate-faint); cursor: default; }
+  .book-card:hover:not(.done) { border-color: var(--pink-dark); box-shadow: 0 2px 12px rgba(96,71,52,0.06); }
+  .book-card-inner { display: flex; align-items: center; gap: 14px; padding-left: 8px; }
+  .book-meta { flex: 1; min-width: 0; }
+  .book-title { font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .book-subtitle { font-size: 12px; color: var(--muted); }
+  .book-right { text-align: right; flex-shrink: 0; }
+  .book-pct { font-size: 18px; font-weight: 500; color: var(--ink); }
+  .book-pct.done { color: var(--faint); }
+  .book-status { font-size: 11px; margin-top: 1px; }
+  .status-good { color: var(--chocolate); }
+  .status-behind { color: #b05a2a; }
+  .progress-bar-wrap { height: 3px; background: var(--blush); border-radius: 2px; margin-top: 10px; }
+  .progress-bar-fill { height: 3px; border-radius: 2px; background: var(--pink-dark); transition: width 0.6s ease; }
+  .progress-bar-fill.done { background: var(--chocolate-faint); }
+
+  /* Completion badge */
+  .badge-done {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--blush); border: 1px solid var(--blush-dark);
+    color: var(--chocolate); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; border-radius: 100px; padding: 3px 10px; font-weight: 500;
+  }
+
+  .empty-shelf {
+    text-align: center; padding: 3rem 1rem;
+    border: 1px dashed var(--border); border-radius: 12px; margin-bottom: 1.5rem;
+  }
+  .empty-shelf span { font-size: 28px; display: block; margin-bottom: 10px; opacity: 0.4; }
+  .empty-shelf p { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--muted); }
+
+  /* ── TRACKER ── */
+  .tracker-header { padding: 2rem 0 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+  .tracker-back { background: none; border: none; font-family: var(--sans); font-size: 12px; color: var(--muted); cursor: pointer; padding: 0; letter-spacing: 0.04em; margin-bottom: 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .tracker-back:hover { color: var(--ink); }
+  .tracker-title { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--ink); line-height: 1.3; margin-bottom: 2px; }
+  .tracker-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  /* ── PROGRESS RING ── */
+  .ring-section { display: flex; align-items: center; gap: 1.5rem; padding: 1.75rem 0; border-bottom: 1px solid var(--border); }
+  .ring-wrap { position: relative; flex-shrink: 0; }
+  .ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .ring-pct { font-size: 19px; font-weight: 500; color: var(--ink); line-height: 1; }
+  .ring-done-text { font-size: 9px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+  .ring-stats { flex: 1; }
+  .stat-row { margin-bottom: 14px; }
+  .stat-row:last-child { margin-bottom: 0; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1px; }
+  .stat-val { font-size: 22px; font-weight: 500; color: var(--ink); }
+  .stat-val-sm { font-size: 16px; font-weight: 500; color: var(--ink); }
+
+  /* ── TODAY CARD ── */
+  .today-card { padding: 1.1rem 1rem; margin: 1.25rem 0; background: var(--blush); border-radius: 10px; border: 1px solid var(--blush-dark); transition: background 0.4s, border-color 0.4s; }
+  .today-card.recalc { background: var(--pink); border-color: var(--pink-dark); }
+  .today-card-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .today-target-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .today-target-ch { font-size: 28px; font-weight: 500; color: var(--ink); margin-bottom: 2px; font-family: var(--serif); }
+  .today-status { font-size: 13px; }
+  .status-behind { color: #b05a2a; }
+  .status-good { color: var(--chocolate); }
+  .today-avg { text-align: right; }
+  .today-avg-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .today-avg-val { font-size: 18px; font-weight: 500; color: var(--ink); }
+
+  /* ── LOG ── */
+  .log-wrap { margin-bottom: 1rem; }
+  .log-inline { display: flex; gap: 8px; align-items: center; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
+  .log-input { flex: 1; background: var(--blush); border: 1px solid var(--blush-dark); border-radius: 8px; padding: 12px 14px; font-size: 15px; color: var(--ink); outline: none; font-family: var(--sans); transition: border-color 0.2s; }
+  .log-input:focus { border-color: var(--pink-dark); }
+  .btn-save { background: var(--chocolate); color: var(--cream); border: none; border-radius: 8px; padding: 12px 18px; font-size: 14px; cursor: pointer; font-weight: 500; font-family: var(--sans); flex-shrink: 0; transition: opacity 0.15s; }
+  .btn-save:hover { opacity: 0.85; }
+  .btn-cancel { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 14px; color: var(--muted); cursor: pointer; flex-shrink: 0; }
+
+  /* ── SCHEDULE ── */
+  .schedule-list { display: flex; flex-direction: column; gap: 2px; }
+  .schedule-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 11px; border-radius: 8px; border: 1px solid transparent; transition: background 0.2s; }
+  .schedule-row.today-row { background: var(--pink); border-color: var(--pink-dark); }
+  .schedule-row-left { display: flex; align-items: center; gap: 11px; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; transition: background 0.3s; }
+  .dot.pending { background: var(--blush); border: 1px solid var(--blush-dark); color: transparent; }
+  .dot.active { background: var(--pink); border: 1px solid var(--pink-dark); color: transparent; }
+  .dot.done { background: var(--chocolate); border: 1px solid var(--chocolate); color: var(--cream); }
+  .row-date { font-size: 13px; color: var(--muted); }
+  .row-date.today-label { color: var(--ink); font-weight: 500; }
+  .today-chip { margin-left: 8px; font-size: 10px; background: var(--pink-dark); color: var(--chocolate); border-radius: 100px; padding: 2px 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .row-right { text-align: right; }
+  .row-ch { font-size: 14px; font-weight: 500; }
+  .row-ch.done { color: var(--chocolate); }
+  .row-ch.upcoming { color: var(--ink); }
+  .row-delta { font-size: 11px; color: var(--faint); margin-left: 6px; }
+
+  /* ── HISTORY ── */
+  .history-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .history-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pink-dark); flex-shrink: 0; margin-top: 6px; }
+  .history-title { font-family: var(--serif); font-size: 14px; font-weight: 600; color: var(--ink); }
+  .history-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .history-badge { display: inline-block; background: var(--blush); border: 1px solid var(--blush-dark); color: var(--chocolate); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 100px; padding: 2px 8px; margin-top: 4px; font-weight: 500; }
+
+  /* ── CELEBRATION ── */
+  #screen-celebrate { min-height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; }
+  #screen-celebrate.active { display: flex; }
+  .celebrate-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--pink); border: 2px solid var(--pink-dark); display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 2rem; animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+  @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .celebrate-eyebrow { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--chocolate); margin-bottom: 10px; }
+  .celebrate-title { font-family: var(--serif); font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1.25; margin-bottom: 8px; max-width: 320px; }
+  .celebrate-meta { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+  .celebrate-badge { display: inline-block; background: var(--blush); border: 1px solid var(--blush-dark); border-radius: 100px; padding: 6px 20px; font-size: 11px; color: var(--chocolate); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; margin-bottom: 2rem; }
+  .celebrate-timeline { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2rem; max-width: 320px; width: 100%; text-align: left; }
+  .timeline-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .timeline-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+  .timeline-row span:first-child { color: var(--muted); }
+  .timeline-row span:last-child { font-weight: 500; color: var(--ink); }
+  .celebrate-btns { display: flex; flex-direction: column; gap: 10px; max-width: 320px; width: 100%; }
+
+  /* ── RATING STARS ── */
+  .rating-row { display: flex; gap: 8px; margin-top: 10px; }
+  .star { font-size: 22px; cursor: pointer; color: var(--blush-dark); transition: color 0.15s; }
+  .star.active { color: var(--pink-dark); }
+  .rating-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ SHELF ══════════ -->
+<div id="screen-shelf" class="screen active">
+  <div class="container">
+    <div class="topbar">
+      <span class="brand">✦ Panels</span>
+      <button class="topbar-action" onclick="showScreen('add')">+ Add</button>
+    </div>
+    <div class="shelf-header">
+      <h1>Your reads</h1>
+      <p id="shelf-subtitle">Graphic novels, one panel at a time.</p>
+    </div>
+    <div id="active-section">
+      <div class="section-label">Currently reading</div>
+      <div class="shelf-grid" id="active-books-list"></div>
+    </div>
+    <div id="completed-section" style="display:none">
+      <div class="section-label">Finished</div>
+      <div id="completed-books-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ADD ══════════ -->
+<div id="screen-add" class="screen">
+  <div class="container">
+    <div class="topbar">
+      <span class="brand">✦ New Read</span>
+      <button class="topbar-action" onclick="showScreen('shelf')">← Back</button>
+    </div>
+    <h2 style="font-family:var(--serif);font-size:24px;font-weight:400;margin-bottom:2rem;line-height:1.3;font-style:italic;">What are you<br />reading?</h2>
+    <div class="field"><label>Title</label><input type="text" id="add-title" placeholder="e.g. Saga, Vol. 1" /></div>
+
+    <!-- Tracking mode toggle -->
+    <div class="field">
+      <label>Track by</label>
+      <div style="display:flex;gap:8px;">
+        <button id="mode-chapters" onclick="setMode('chapters')"
+          style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--pink-dark);background:var(--pink);color:var(--chocolate);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;">
+          Chapters
+        </button>
+        <button id="mode-pages" onclick="setMode('pages')"
+          style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;">
+          Pages
+        </button>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="field"><label id="add-total-label">Total chapters</label><input type="number" id="add-chapters" placeholder="e.g. 12" min="1" /></div>
+      <div class="field"><label id="add-current-label">Current chapter</label><input type="number" id="add-current" placeholder="0" min="0" /></div>
+    </div>
+    <div class="field">
+      <label>Deadline</label>
+      <input type="date" id="add-deadline" />
+      <div class="hint">Default: 3 days — graphic novel pace</div>
+    </div>
+    <div style="margin-top:1.5rem;">
+      <button class="btn-primary" onclick="addBook()">Start reading →</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6;" id="add-deadline-display"></p>
+  </div>
+</div>
+
+<!-- ══════════ TRACKER ══════════ -->
+<div id="screen-tracker" class="screen">
+  <div class="container">
+    <div class="tracker-header">
+      <button class="tracker-back" onclick="showScreen('shelf')">← All reads</button>
+      <div class="tracker-title" id="tracker-title">—</div>
+      <div class="tracker-sub" id="tracker-sub">—</div>
+    </div>
+
+    <div class="ring-section">
+      <div class="ring-wrap">
+        <svg width="110" height="110" style="transform:rotate(-90deg);display:block;">
+          <circle id="ring-bg" cx="55" cy="55" r="46" fill="none" stroke="#f6d8d6" stroke-width="9"/>
+          <circle id="ring-fill" cx="55" cy="55" r="46" fill="none" stroke="#e0a8bc" stroke-width="9"
+            stroke-dasharray="0 289" stroke-linecap="round"
+            style="transition:stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1);"/>
+        </svg>
+        <div class="ring-label">
+          <div class="ring-pct" id="ring-pct">0%</div>
+          <div class="ring-done-text">done</div>
+        </div>
+      </div>
+      <div class="ring-stats">
+        <div class="stat-row">
+          <div class="stat-label" id="stat-current-label">Current chapter</div>
+          <div class="stat-val" id="stat-current">—</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label" id="stat-left-label">Chapters left</div>
+          <div class="stat-val-sm" id="stat-left">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="today-card" id="today-card">
+      <div class="today-card-row">
+        <div>
+          <div class="today-target-label">Tonight's target</div>
+          <div class="today-target-ch" id="today-target">—</div>
+          <div class="today-status" id="today-status">—</div>
+        </div>
+        <div class="today-avg">
+          <div class="today-avg-label">Avg / day</div>
+          <div class="today-avg-val" id="today-avg">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-wrap" id="log-wrap">
+      <button class="btn-pink" id="log-btn" onclick="toggleLog(true)">Log current chapter</button>
+      <div class="log-inline" id="log-inline" style="display:none;">
+        <input class="log-input" type="number" id="log-input" placeholder="Chapter number" id="log-input"
+          onkeydown="if(event.key==='Enter') saveLog(); if(event.key==='Escape') toggleLog(false)" />
+        <button class="btn-save" onclick="saveLog()">Save</button>
+        <button class="btn-cancel" onclick="toggleLog(false)">✕</button>
+      </div>
+    </div>
+
+    <!-- Change deadline -->
+    <div id="recalc-wrap" style="margin-bottom:1rem;display:none;">
+      <button class="btn-ghost" onclick="recalculate()">Change deadline ↻</button>
+      <div id="deadline-picker-wrap" style="display:none;margin-top:10px;">
+        <div style="background:var(--blush);border:1px solid var(--blush-dark);border-radius:8px;padding:1rem 1.1rem;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px;">New deadline</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="date" id="deadline-input" style="flex:1;min-width:140px;background:#fff;border:1px solid var(--blush-dark);border-radius:7px;padding:9px 12px;font-size:14px;color:var(--ink);font-family:var(--sans);outline:none;" />
+            <button onclick="applyNewDeadline()" style="background:var(--chocolate);color:var(--cream);border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;white-space:nowrap;">Apply</button>
+            <button onclick="document.getElementById('deadline-picker-wrap').style.display='none'" style="background:none;border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--muted);cursor:pointer;">✕</button>
+          </div>
+          <div id="deadline-error" style="display:none;font-size:12px;color:#b05a2a;margin-top:6px;">Deadline can't be in the past.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:1.25rem;">Your schedule</div>
+    <div class="schedule-list" id="schedule-list"></div>
+
+    <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+      <button class="btn-ghost" onclick="deleteBook()" style="color:#b05a2a;border-color:#e8c8b8;">Remove this read</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CELEBRATE ══════════ -->
+<div id="screen-celebrate" class="screen">
+  <div style="max-width:400px;margin:0 auto;padding:0 1.5rem;display:flex;flex-direction:column;align-items:center;min-height:100vh;justify-content:center;">
+    <div class="celebrate-icon">✦</div>
+    <div class="celebrate-eyebrow">Finished!</div>
+    <div class="celebrate-title" id="cel-title">—</div>
+    <div class="celebrate-meta" id="cel-meta">—</div>
+
+    <!-- Rating -->
+    <div style="margin-bottom:1.5rem;text-align:center;">
+      <div class="rating-label">Rate it</div>
+      <div class="rating-row" id="rating-row">
+        <span class="star" onclick="setRating(1)">♥</span>
+        <span class="star" onclick="setRating(2)">♥</span>
+        <span class="star" onclick="setRating(3)">♥</span>
+        <span class="star" onclick="setRating(4)">♥</span>
+        <span class="star" onclick="setRating(5)">♥</span>
+      </div>
+    </div>
+
+    <div class="celebrate-badge">Read ✦</div>
+    <div class="celebrate-timeline" id="cel-timeline"></div>
+    <div class="celebrate-btns">
+      <button class="btn-primary" onclick="saveRatingAndNext()">Next read →</button>
+      <button class="btn-ghost" onclick="showScreen('shelf')">Back to shelf</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'panels_v1';
+let currentBookId = null;
+let pendingRating = 0;
+let pendingBookId = null;
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { books: [] }; }
+  catch { return { books: [] }; }
+}
+function save(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+function getData() { return load(); }
+
+// ── UTILS ──
+function getDefaultDeadline() {
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+function todayStart() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }); }
+function fmtDateShort(d) { return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function buildSchedule(startCh, totalCh, startDate, endDate) {
+  const start = new Date(startDate); start.setHours(0,0,0,0);
+  const end = new Date(endDate); end.setHours(0,0,0,0);
+  const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+  const chLeft = totalCh - startCh;
+  const schedule = [];
+  for (let i = 0; i < totalDays; i++) {
+    const dayDate = new Date(start); dayDate.setDate(start.getDate() + i);
+    const targetCh = Math.round(startCh + ((i + 1) / totalDays) * chLeft);
+    schedule.push({ day: i+1, date: dayDate.toISOString(), targetCh: Math.min(targetCh, totalCh) });
+  }
+  return schedule;
+}
+
+// ── SCHEDULE HELPERS ──
+function ensureSchedule(book) {
+  const today = todayStart();
+  const todayISO = today.toISOString().split('T')[0];
+  if (!book.schedule || book.schedule.length === 0) {
+    book.schedule = buildSchedule(book.currentCh, book.totalCh, today, new Date(book.deadline));
+    return;
+  }
+  const firstEntry = book.schedule[0];
+  const firstISO = new Date(firstEntry.date).toISOString().split('T')[0];
+  if (firstISO < todayISO) {
+    book.schedule = buildSchedule(book.currentCh, book.totalCh, today, new Date(book.deadline));
+  }
+}
+
+function getTodayTarget(book) {
+  if (!book.schedule || book.schedule.length === 0) return book.totalCh;
+  return book.schedule[0].targetCh;
+}
+
+// ── SCREENS ──
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (name === 'shelf') renderShelf();
+  if (name === 'add') initAddForm();
+  if (name === 'tracker' && currentBookId) renderTracker(currentBookId);
+}
+
+// ── SHELF ──
+function renderShelf() {
+  const data = getData();
+  const active = data.books.filter(b => !b.completed);
+  const completed = data.books.filter(b => b.completed);
+  const sub = document.getElementById('shelf-subtitle');
+  sub.textContent = data.books.length === 0
+    ? 'Your reading list starts here.'
+    : `${active.length} reading · ${completed.length} finished`;
+
+  const activeList = document.getElementById('active-books-list');
+  const completedList = document.getElementById('completed-books-list');
+  const completedSection = document.getElementById('completed-section');
+
+  if (active.length === 0) {
+    activeList.innerHTML = `<div class="empty-shelf"><span>🎨</span><p>No active reads yet.<br>Add one to get started.</p></div>`;
+  } else {
+    activeList.innerHTML = active.map(book => {
+      const pct = Math.round((book.currentCh / book.totalCh) * 100);
+      const today = todayStart();
+      const sched = buildSchedule(book.currentCh, book.totalCh, today, new Date(book.deadline));
+      const todayTarget = sched[0]?.targetCh ?? book.totalCh;
+      const behind = todayTarget - book.currentCh;
+      return `
+        <div class="book-card ${behind > 0 ? 'behind' : ''}" onclick="openBook('${book.id}')">
+          <div class="book-card-inner">
+            <div class="book-meta">
+              <div class="book-title">${book.title}</div>
+              <div class="book-subtitle">${book.mode === 'pages' ? 'Pg' : 'Ch'} ${book.currentCh} of ${book.totalCh} · ends ${fmtDateShort(book.deadline)}</div>
+            </div>
+            <div class="book-right">
+              <div class="book-pct">${pct}%</div>
+              <div class="book-status ${behind > 0 ? 'status-behind' : 'status-good'}">${behind > 0 ? `${behind} ch behind` : '✦ on track'}</div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        </div>`;
+    }).join('');
+  }
+
+  if (completed.length === 0) {
+    completedSection.style.display = 'none';
+  } else {
+    completedSection.style.display = 'block';
+    completedList.innerHTML = completed.map(book => {
+      const hearts = book.rating ? '♥'.repeat(book.rating) + '<span style="color:var(--blush-dark);">' + '♥'.repeat(5 - book.rating) + '</span>' : '';
+      return `
+        <div class="history-item">
+          <div class="history-dot"></div>
+          <div>
+            <div class="history-title">${book.title}</div>
+            <div class="history-meta">${book.totalCh} ${book.mode === 'pages' ? 'pages' : 'chapters'} · finished ${fmtDateShort(book.completedDate)} · ${book.daysToComplete ?? '?'} days</div>
+            ${book.rating ? `<div style="font-size:14px;color:var(--pink-dark);margin-top:3px;">${hearts}</div>` : ''}
+            <div class="history-badge">Read ✦</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+// ── ADD BOOK ──
+let addMode = 'chapters'; // 'chapters' or 'pages'
+
+function setMode(mode) {
+  addMode = mode;
+  const isChapters = mode === 'chapters';
+  const unit = isChapters ? 'chapter' : 'page';
+  document.getElementById('mode-chapters').style.background = isChapters ? 'var(--pink)' : 'transparent';
+  document.getElementById('mode-chapters').style.borderColor = isChapters ? 'var(--pink-dark)' : 'var(--border)';
+  document.getElementById('mode-chapters').style.color = isChapters ? 'var(--chocolate)' : 'var(--muted)';
+  document.getElementById('mode-pages').style.background = !isChapters ? 'var(--pink)' : 'transparent';
+  document.getElementById('mode-pages').style.borderColor = !isChapters ? 'var(--pink-dark)' : 'var(--border)';
+  document.getElementById('mode-pages').style.color = !isChapters ? 'var(--chocolate)' : 'var(--muted)';
+  document.getElementById('add-total-label').textContent = `Total ${unit}s`;
+  document.getElementById('add-current-label').textContent = `Current ${unit}`;
+  document.getElementById('add-chapters').placeholder = isChapters ? 'e.g. 12' : 'e.g. 240';
+  document.getElementById('add-current').placeholder = '0';
+}
+
+function initAddForm() {
+  ['add-title','add-chapters','add-current'].forEach(id => document.getElementById(id).value = '');
+  addMode = 'chapters';
+  setMode('chapters');
+  const def = getDefaultDeadline();
+  document.getElementById('add-deadline').value = def.toISOString().split('T')[0];
+  document.getElementById('add-deadline-display').textContent =
+    'Default: ' + def.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  document.getElementById('add-title').focus();
+}
+
+function addBook() {
+  const title = document.getElementById('add-title').value.trim();
+  const total = parseInt(document.getElementById('add-chapters').value);
+  const current = parseInt(document.getElementById('add-current').value) || 0;
+  const deadlineVal = document.getElementById('add-deadline').value;
+  if (!title || isNaN(total) || total < 1) return alert('Please fill in title and total chapters.');
+  const deadline = deadlineVal ? new Date(deadlineVal + 'T23:59:59') : getDefaultDeadline();
+  const data = getData();
+  const book = {
+    id: genId(), title, totalCh: total,
+    startCh: Math.min(current, total - 1),
+    currentCh: Math.min(current, total - 1),
+    deadline: deadline.toISOString(),
+    createdAt: new Date().toISOString(),
+    completed: false, rating: 0,
+    mode: addMode, // 'chapters' or 'pages'
+  };
+  book.schedule = buildSchedule(book.currentCh, book.totalCh, todayStart(), deadline);
+  data.books.unshift(book);
+  save(data);
+  openBook(book.id);
+}
+
+function openBook(id) {
+  currentBookId = id;
+  showScreen('tracker');
+}
+
+// ── TRACKER ──
+function renderTracker(id) {
+  const data = getData();
+  const book = data.books.find(b => b.id === id);
+  if (!book) return showScreen('shelf');
+
+  ensureSchedule(book);
+  save(data);
+
+  const unit = book.mode === 'pages' ? 'page' : 'chapter';
+  const units = unit + 's';
+  document.getElementById('tracker-title').textContent = book.title;
+  document.getElementById('tracker-sub').textContent =
+    `${book.totalCh} ${units} · ends ${fmtDate(book.deadline)}`;
+  // Update stat labels
+  if (document.getElementById('stat-current-label')) document.getElementById('stat-current-label').textContent = `Current ${unit}`;
+  if (document.getElementById('stat-left-label')) document.getElementById('stat-left-label').textContent = `${units.charAt(0).toUpperCase() + units.slice(1)} left`;
+  // Update log button
+  document.getElementById('log-btn').textContent = `Log current ${unit}`;
+  // Update log input placeholder
+  document.getElementById('log-input').placeholder = `${unit.charAt(0).toUpperCase() + unit.slice(1)} number`;
+
+  const pct = Math.min(100, Math.round((book.currentCh / book.totalCh) * 100));
+  const circ = 2 * Math.PI * 46;
+  document.getElementById('ring-fill').setAttribute('stroke-dasharray', `${circ * pct / 100} ${circ}`);
+  document.getElementById('ring-pct').textContent = pct + '%';
+  document.getElementById('stat-current').textContent = book.mode === 'pages' ? `Pg ${book.currentCh}` : `Ch ${book.currentCh}`;
+  document.getElementById('stat-left').textContent = book.totalCh - book.currentCh;
+
+  const schedule = book.schedule;
+  const todayEntry = schedule[0];
+
+  if (todayEntry) {
+    const unitLabel = book.mode === 'pages' ? 'Pg' : 'Ch';
+    document.getElementById('today-target').textContent = `${unitLabel} ${todayEntry.targetCh}`;
+    const behind = todayEntry.targetCh - book.currentCh;
+    const statusEl = document.getElementById('today-status');
+    if (behind > 0) {
+      statusEl.className = 'today-status status-behind';
+      statusEl.textContent = `${behind} ${unit}${behind > 1 ? 's' : ''} to go tonight`;
+    } else {
+      statusEl.className = 'today-status status-good';
+      statusEl.textContent = 'Tonight\'s target hit ✦';
+    }
+    const pagesLeft = book.totalCh - book.currentCh;
+    document.getElementById('today-avg').textContent = schedule.length > 0 ? Math.ceil(pagesLeft / schedule.length) : 0;
+    document.getElementById('recalc-wrap').style.display = 'block';
+  }
+
+  const list = document.getElementById('schedule-list');
+  list.innerHTML = schedule.map((entry, i) => {
+    const isToday = i === 0;
+    const isDone = book.currentCh >= entry.targetCh;
+    const dotClass = isDone ? 'done' : isToday ? 'active' : 'pending';
+    const delta = i > 0 ? entry.targetCh - schedule[i-1].targetCh : entry.targetCh - book.startCh;
+    return `
+      <div class="schedule-row ${isToday ? 'today-row' : ''}">
+        <div class="schedule-row-left">
+          <div class="dot ${dotClass}">${isDone ? '✓' : ''}</div>
+          <span class="row-date ${isToday ? 'today-label' : ''}">
+            ${fmtDate(entry.date)}${isToday ? '<span class="today-chip">Today</span>' : ''}
+          </span>
+        </div>
+        <div class="row-right">
+          <span class="row-ch ${isDone ? 'done' : 'upcoming'}">${book.mode === 'pages' ? 'Pg' : 'Ch'} ${entry.targetCh}</span>
+          ${i > 0 ? `<span class="row-delta">+${delta}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleLog(show) {
+  document.getElementById('log-btn').style.display = show ? 'none' : 'block';
+  document.getElementById('log-inline').style.display = show ? 'flex' : 'none';
+  if (show) setTimeout(() => document.getElementById('log-input').focus(), 40);
+  else document.getElementById('log-input').value = '';
+}
+
+function saveLog() {
+  const val = parseInt(document.getElementById('log-input').value);
+  if (isNaN(val) || val < 0) return;
+  const data = getData();
+  const book = data.books.find(b => b.id === currentBookId);
+  if (!book) return;
+  const newCh = Math.min(val, book.totalCh);
+
+  if (newCh >= book.totalCh) {
+    book.currentCh = newCh;
+    book.completed = true;
+    book.completedDate = new Date().toISOString();
+    book.daysToComplete = Math.max(1, Math.round((new Date() - new Date(book.createdAt)) / 86400000));
+    save(data);
+    toggleLog(false);
+    showCelebrate(book);
+    return;
+  }
+
+  const todayTarget = getTodayTarget(book);
+  if (newCh >= todayTarget) {
+    book.currentCh = newCh;
+    if (book.schedule.length > 1) {
+      const todayEntry = book.schedule[0];
+      const tomorrow = new Date(todayStart()); tomorrow.setDate(tomorrow.getDate() + 1);
+      const futureDays = buildSchedule(newCh, book.totalCh, tomorrow, new Date(book.deadline));
+      book.schedule = [todayEntry, ...futureDays];
+    }
+  } else {
+    book.currentCh = newCh;
+  }
+
+  save(data);
+  toggleLog(false);
+  renderTracker(currentBookId);
+}
+
+function recalculate() {
+  const wrap = document.getElementById('deadline-picker-wrap');
+  const isOpen = wrap.style.display !== 'none';
+  if (isOpen) { wrap.style.display = 'none'; return; }
+  const data = getData();
+  const book = data.books.find(b => b.id === currentBookId);
+  if (!book) return;
+  document.getElementById('deadline-input').value = new Date(book.deadline).toISOString().split('T')[0];
+  wrap.style.display = 'block';
+}
+
+function applyNewDeadline() {
+  const data = getData();
+  const book = data.books.find(b => b.id === currentBookId);
+  if (!book) return;
+  const val = document.getElementById('deadline-input').value;
+  if (!val) return;
+  const newDeadline = new Date(val + 'T23:59:59');
+  if (isNaN(newDeadline.getTime())) return;
+  const today = todayStart();
+  if (newDeadline < today) { document.getElementById('deadline-error').style.display = 'block'; return; }
+  document.getElementById('deadline-error').style.display = 'none';
+  book.deadline = newDeadline.toISOString();
+  const todayEntry = book.schedule[0];
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const futureDays = buildSchedule(book.currentCh, book.totalCh, tomorrow, newDeadline);
+  book.schedule = todayEntry ? [todayEntry, ...futureDays] : futureDays;
+  save(data);
+  document.getElementById('deadline-picker-wrap').style.display = 'none';
+  renderTracker(currentBookId);
+  const card = document.getElementById('today-card');
+  card.classList.add('recalc');
+  setTimeout(() => card.classList.remove('recalc'), 1200);
+}
+
+function deleteBook() {
+  if (!confirm('Remove this read from your shelf?')) return;
+  const data = getData();
+  data.books = data.books.filter(b => b.id !== currentBookId);
+  save(data);
+  currentBookId = null;
+  showScreen('shelf');
+}
+
+// ── CELEBRATE + RATING ──
+let celebratingBookId = null;
+function showCelebrate(book) {
+  celebratingBookId = book.id;
+  pendingRating = 0;
+  document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+  document.getElementById('cel-title').textContent = book.title;
+  const celUnit = book.mode === 'pages' ? 'pages' : 'chapters';
+  document.getElementById('cel-meta').textContent = `${book.totalCh} ${celUnit} · ${book.daysToComplete ?? 1} day${book.daysToComplete !== 1 ? 's' : ''}`;
+  document.getElementById('cel-timeline').innerHTML = `
+    <div class="timeline-label">Reading stats</div>
+    <div class="timeline-row"><span>Total ${book.mode === 'pages' ? 'pages' : 'chapters'}</span><span>${book.totalCh}</span></div>
+    <div class="timeline-row"><span>Avg per day</span><span>${Math.ceil(book.totalCh / (book.daysToComplete ?? 1))}</span></div>
+    <div class="timeline-row"><span>Completed</span><span>${fmtDateShort(book.completedDate)}</span></div>
+    <div class="timeline-row"><span>Days taken</span><span>${book.daysToComplete ?? 1}</span></div>
+  `;
+  showScreen('celebrate');
+}
+
+function setRating(n) {
+  pendingRating = n;
+  document.querySelectorAll('.star').forEach((s, i) => {
+    s.classList.toggle('active', i < n);
+  });
+}
+
+function saveRatingAndNext() {
+  if (celebratingBookId) {
+    const data = getData();
+    const book = data.books.find(b => b.id === celebratingBookId);
+    if (book) { book.rating = pendingRating; save(data); }
+  }
+  showScreen('add');
+}
+
+renderShelf();
+</script>
+</body>
+</html>
